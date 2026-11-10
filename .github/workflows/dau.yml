@@ -5,6 +5,9 @@ on:
     - cron: "*/10 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: dau-sync
   cancel-in-progress: false
@@ -19,3 +22,14 @@ jobs:
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: python3 dau_sync.py
+      - name: 心跳，防止定时任务被停用
+        run: |
+          d=$(date -u +%F)
+          if [ ! -f .heartbeat ] || [ "$(cat .heartbeat)" != "$d" ]; then
+            echo "$d" > .heartbeat
+            git config user.name "dau-bot"
+            git config user.email "dau-bot@users.noreply.github.com"
+            git add .heartbeat
+            git commit -m "心跳 $d"
+            git push
+          fi
